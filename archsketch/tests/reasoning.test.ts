@@ -1,0 +1,6 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {rankDecision,newDecision} from '../src/reasoning.ts';
+import {newDesign,validateDesign} from '../src/design.ts';
+test('权重总分可复算，修改权重排序更新，平分保持并列分数',()=>{const d=newDecision();let r=rankDecision(d);assert.deepEqual(r.eligible.map(x=>x.score),[88,77,68]);d.dimensions.forEach(x=>x.weight=x.id==='trace'?100:0);r=rankDecision(d);assert.equal(r.eligible[0].candidate.id,'b');assert.equal(r.eligible[0].score,100);assert.equal(r.eligible[1].score,r.eligible[2].score);});
+test('缺分不当零，违规候选单列，选择违规不改变检查结果',()=>{const d=newDecision();d.candidates[0].scores.reliable=null;d.candidates[1].violations=['违反明确本机部署约束'];d.selectedId='b';const r=rankDecision(d);assert.deepEqual(r.eligible.map(x=>x.candidate.id),['c']);assert.equal(r.excluded.find(x=>x.candidate.id==='a')!.score,null);assert.ok(r.excluded.find(x=>x.candidate.id==='b')!.issues.length);const model=newDesign();model.decisions=[d];assert.doesNotThrow(()=>validateDesign(model));});
+test('权重未满100不生成误导总分；非法评分不得持久化',()=>{const d=newDecision();d.dimensions[0].weight=0;assert.equal(rankDecision(d).weightValid,false);assert.equal(rankDecision(d).eligible.length,0);const model=newDesign();d.candidates[0].scores.trace=Infinity;model.decisions=[d];assert.throws(()=>validateDesign(model));});
